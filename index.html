@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#b71c1c" />
+  <title>RR Pokédex Checklist</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <style>
+    :root{
+      --bg:#0b0b0f; --card:#151520; --text:#f2f2f5; --muted:#a9a9b3;
+      --accent:#e53935; --good:#2e7d32; --warn:#ffb300; --line:#2a2a38;
+      --chip:#202032;
+    }
+    @media (prefers-color-scheme: light){
+      :root{ --bg:#f6f6fb; --card:#ffffff; --text:#14141a; --muted:#5a5a66; --line:#e6e6ef; --chip:#f0f0f7; }
+    }
+    html,body{height:100%;}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    header{
+      position:sticky;top:0;z-index:10;
+      background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,0));
+      backdrop-filter: blur(10px);
+      padding:12px 12px 10px;
+      border-bottom:1px solid var(--line);
+    }
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .title{font-weight:800;letter-spacing:.2px;}
+    .pill{font-size:12px;color:var(--muted);background:var(--chip);border:1px solid var(--line);padding:6px 10px;border-radius:999px;}
+    .btn{
+      border:1px solid var(--line); background:var(--card); color:var(--text);
+      padding:9px 11px;border-radius:12px; cursor:pointer; font-weight:600;
+    }
+    .btn.primary{background:var(--accent);border-color:transparent;}
+    .btn:active{transform:translateY(1px);}
+    input[type="search"]{
+      width:100%; max-width:520px;
+      padding:12px 12px;border-radius:12px;border:1px solid var(--line);
+      background:var(--card); color:var(--text); outline:none;
+    }
+    main{padding:12px;max-width:1050px;margin:0 auto;}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 8px;}
+    .grid{
+      display:grid; gap:10px;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:16px;
+      padding:10px 10px;
+    }
+    .cardTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+    .num{font-variant-numeric: tabular-nums; font-weight:800; color:var(--muted);}
+    .name{font-weight:800;}
+    .variant{font-size:12px;color:var(--muted); margin-top:2px;}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+    .toggle{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid var(--line); background:var(--chip); padding:8px 10px;border-radius:999px; cursor:pointer;
+      user-select:none;
+    }
+    .toggle.on{border-color:transparent;}
+    .toggle.caught.on{background:rgba(46,125,50,.18);}
+    .toggle.shiny.on{background:rgba(255,179,0,.18);}
+    .smallBtn{
+      border:1px solid var(--line); background:transparent; color:var(--text);
+      padding:8px 10px;border-radius:12px; cursor:pointer; font-weight:650;
+    }
+    .smallBtn.danger{border-color:rgba(229,57,53,.35); color:#ffb2b0;}
+    .footerNote{color:var(--muted);font-size:12px;line-height:1.4;margin-top:14px;}
+    .toast{
+      position:fixed; left:50%; bottom:16px; transform:translateX(-50%);
+      background:var(--card); border:1px solid var(--line); padding:10px 12px;border-radius:14px;
+      box-shadow:0 8px 28px rgba(0,0,0,.25);
+      max-width:95vw; z-index:100; display:none;
+    }
+    .filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    label.chk{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:14px;}
+    input[type="checkbox"]{transform:scale(1.1);}
+    .sep{height:1px;background:var(--line);margin:10px 0;}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <div class="title">RR Pokédex Checklist</div>
+      <div class="pill" id="statusPill">Offline-ready after first load</div>
+      <div style="flex:1"></div>
+      <button class="btn" id="installBtn" style="display:none">Install</button>
+      <button class="btn primary" id="refreshBtn">Refresh list</button>
+    </div>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search by name, number, or variant (e.g. 25, pikachu, alolan)..." />
+      <div class="filters">
+        <label class="chk"><input type="checkbox" id="onlyUncaught"> Only uncaught</label>
+        <label class="chk"><input type="checkbox" id="onlyShiny"> Only shiny</label>
+      </div>
+      <button class="btn" id="exportBtn">Export</button>
+      <button class="btn" id="importBtn">Import</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" />
+    </div>
+    <div class="row" style="gap:8px">
+      <div class="pill" id="statsPill">Loading…</div>
+      <div class="pill" id="viewPill">View: …</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid" id="list"></div>
+    <div class="footerNote">
+      <b>Offline:</b> After the first successful “Refresh list”, the Pokédex list and your progress are stored on your phone.
+      You can then use the app with little/no internet. You only need internet again if you want to refresh the list.
+      <br><br>
+      <b>Numbering:</b> The numbered order is based on Radical Red’s Encounter Code IDs (4-digit hex → decimal).
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
